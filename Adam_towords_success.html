@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AS • ESP32 Control</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap');
+
+:root{
+  --black:#080807; --panel:#11110f; --panel-soft:#151512;
+  --line:rgba(213,174,83,.22); --gold:#c99735; --gold2:#ffe39a;
+  --text:#f4f0e7; --muted:#a59e8f; --green:#70d69c; --red:#e97878;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:Manrope,Arial,sans-serif;background:var(--black);color:var(--text)}
+body{overflow-x:hidden}
+body:before{
+  content:"";position:fixed;inset:0;z-index:-2;
+  background:
+    radial-gradient(circle at 82% 8%,rgba(201,151,53,.09),transparent 24%),
+    linear-gradient(135deg,#070706,#11110f 50%,#050505);
+}
+body:after{
+  content:"";position:fixed;width:700px;height:700px;border-radius:50%;
+  right:-260px;bottom:-330px;border:1px solid rgba(213,174,83,.10);
+  box-shadow:0 0 80px rgba(213,174,83,.04);z-index:-1;
+}
+.screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:28px}
+.hidden{display:none!important}
+
+/* AS splash */
+.splash{position:fixed;inset:0;background:#080807;display:flex;align-items:center;justify-content:center;z-index:100}
+.as-mark,.login-logo,.brand{position:relative;text-align:center;color:transparent;background:linear-gradient(115deg,#8a5b19 8%,#f8df91 28%,#a66f20 47%,#fff0ae 64%,#9b671c 88%);background-clip:text;-webkit-background-clip:text;font-family:"Playfair Display",serif;line-height:1;text-shadow:0 0 24px rgba(201,151,53,.18)}
+.as-mark{font-size:128px}
+.as-ring{position:absolute;inset:-45px;border:1px solid rgba(213,174,83,.72);border-radius:50%;box-shadow:0 0 25px rgba(213,174,83,.15)}
+.as-ring:after{content:"";position:absolute;width:8px;height:8px;background:var(--gold2);border-radius:50%;left:50%;bottom:-4px;box-shadow:0 0 18px var(--gold2)}
+.splash .as-mark{animation:zoomLogo 2.2s ease forwards}
+.splash .tag{position:absolute;top:calc(50% + 105px);width:100%;left:0;text-align:center;letter-spacing:5px;color:#d4b66c;font-size:12px;opacity:0;animation:fadeTag 1s 1s forwards}
+@keyframes zoomLogo{0%{transform:scale(.35);opacity:0}35%{opacity:1}100%{transform:scale(1.25);opacity:0}}
+@keyframes fadeTag{to{opacity:1}}
+.loader{background:#090908;color:white}
+.loader .as-mark{font-size:100px;animation:spin 1.5s ease-in-out}
+.loader .as-ring{border-color:rgba(213,174,83,.75);box-shadow:0 0 45px rgba(213,174,83,.25)}
+@keyframes spin{0%{transform:rotate(-20deg) scale(.5);opacity:0}45%{opacity:1}100%{transform:rotate(360deg) scale(1);opacity:0}}
+.loader-text{position:absolute;top:calc(50% + 120px);letter-spacing:2px;color:#d4b66c;font-size:13px}
+
+/* login */
+.login-card{width:min(430px,100%);padding:38px;border:1px solid var(--line);background:rgba(17,17,15,.96);
+  border-radius:8px;box-shadow:0 25px 80px rgba(0,0,0,.55);backdrop-filter:blur(14px);text-align:center}
+.login-logo{font-size:72px;margin-bottom:4px}
+.login-card h1{font-size:22px;margin:5px 0;color:white}
+.login-card p{color:var(--muted);font-size:13px;margin:8px 0 26px}
+.input-wrap{position:relative;margin:13px 0}
+.input-wrap input{width:100%;height:50px;border:1px solid rgba(213,174,83,.24);border-radius:5px;background:#090908;color:white;padding:0 15px;outline:none;font-size:14px}
+.input-wrap input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(213,174,83,.08)}
+.login-btn{width:100%;height:50px;border:0;border-radius:5px;background:linear-gradient(115deg,#8a5b19,#f4d77f 48%,#a66f20);color:#211708;font-weight:800;cursor:pointer;margin-top:8px}
+.login-btn:hover{filter:brightness(1.08);box-shadow:0 8px 28px rgba(201,151,53,.2)}
+.login-error{height:18px;color:var(--red);font-size:12px;margin-top:10px}
+
+/* dashboard */
+.dashboard{display:none;min-height:100vh}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:220px;border-right:1px solid var(--line);background:rgba(8,8,7,.94);padding:25px 16px;backdrop-filter:blur(12px)}
+.brand{font-size:62px;margin-bottom:28px}
+.nav button{width:100%;text-align:left;background:transparent;color:#aaa397;border:0;border-radius:5px;padding:12px 13px;margin:3px 0;cursor:pointer;font-weight:600}
+.nav button.active,.nav button:hover{background:rgba(213,174,83,.13);color:#f5e5b5}
+.connection{position:absolute;bottom:25px;left:16px;right:16px;border:1px solid var(--line);border-radius:6px;padding:13px;color:var(--muted);font-size:12px}
+.connection b{color:#d4b66c;display:block;margin-top:4px}
+.main{margin-left:220px;padding:32px;max-width:1400px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:25px}
+.top h1{margin:0;font-size:28px}.top p{margin:5px 0;color:var(--muted);font-size:13px}
+.status{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border-radius:4px;background:rgba(22,21,17,.9);border:1px solid var(--line);font-size:13px;font-weight:700}
+.dot{width:9px;height:9px;border-radius:50%;background:#64748b}.online .dot{background:var(--green);box-shadow:0 0 10px var(--green)}.offline .dot{background:var(--red)}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.card{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:20px;box-shadow:0 15px 35px rgba(0,0,0,.3);backdrop-filter:blur(10px)}
+.card h3{margin:0 0 16px;font-size:14px;color:#d9c99f}.metric{font-size:27px;font-weight:800}.metric small{font-size:13px;color:var(--muted);font-weight:500}
+.content{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-top:16px}
+.led-panel{min-height:350px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.led-orb{width:180px;height:180px;border-radius:50%;border:2px solid #504b40;background:#090908;display:flex;align-items:center;justify-content:center;margin:10px 0 22px;box-shadow:inset 0 0 45px #020202}
+.led-orb.on{background:radial-gradient(circle,#ffe18b 0,#dba62f 38%,#162b34 72%);border-color:var(--gold2);box-shadow:0 0 35px rgba(243,196,91,.75),inset 0 0 30px rgba(255,235,158,.35)}
+.bulb{font-size:64px;filter:grayscale(1);opacity:.65;cursor:pointer;user-select:none}.bulb:hover{transform:scale(1.06)}.on .bulb{filter:none;opacity:1;text-shadow:0 0 25px #fff0a7}
+.control-row{display:flex;gap:12px}.btn{border:1px solid rgba(213,174,83,.35);border-radius:5px;padding:12px 20px;cursor:pointer;background:linear-gradient(115deg,#8a5b19,#f4d77f 48%,#a66f20);color:#211708;font-weight:800}
+.btn.off{background:transparent;color:#c0b9ab}.btn:disabled{opacity:.4;cursor:not-allowed}
+.activity{height:300px;overflow:auto}.event{display:flex;gap:10px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:12px}.event i{width:8px;height:8px;background:var(--green);border-radius:50%;margin-top:4px;flex:none}.event time{margin-left:auto;color:#6f909a}
+.footer{text-align:center;color:#66838c;font-size:11px;margin:25px 0}
+@media(max-width:900px){.sidebar{width:72px}.brand{font-size:38px}.nav button{font-size:0;text-align:center}.main{margin-left:72px;padding:20px}.cards{grid-template-columns:1fr}.content{grid-template-columns:1fr}.connection{display:none}}
+@media(max-width:600px){.main{padding:15px}.top{align-items:flex-start;gap:10px}.top h1{font-size:22px}.status{font-size:11px}.sidebar{width:58px;padding:15px 8px}.main{margin-left:58px}.brand{font-size:30px}}
+</style>
+</head>
+<body>
+
+<!-- Splash -->
+<section id="splash" class="splash screen">
+  <div class="as-mark"><span class="as-ring"></span>AS</div>
+  <div class="tag">SMART CONNECTION • SEAMLESS CONTROL</div>
+</section>
+
+<!-- Login -->
+<section id="login" class="screen hidden">
+  <div class="login-card">
+    <div class="login-logo">AS</div>
+    <h1>WELCOME BACK</h1>
+    <p>Sign in to access your ESP32 control dashboard</p>
+    <form onsubmit="login(event)">
+      <div class="input-wrap"><input id="username" autocomplete="username" placeholder="Username" required></div>
+      <div class="input-wrap"><input id="password" type="password" autocomplete="current-password" placeholder="Password" required></div>
+      <button class="login-btn" type="submit">LOGIN</button>
+      <div id="loginError" class="login-error"></div>
+    </form>
+  </div>
+</section>
+
+<!-- Loader -->
+<section id="loader" class="loader screen hidden">
+  <div class="as-mark"><span class="as-ring"></span>AS</div>
+  <div class="loader-text">INITIALIZING DASHBOARD</div>
+</section>
+
+<!-- Dashboard -->
+<div id="dashboard" class="dashboard">
+  <aside class="sidebar">
+    <div class="brand">AS</div>
+    <div class="nav">
+      <button class="active">⌂ &nbsp; Dashboard</button>
+      <button>◉ &nbsp; LED Control</button>
+      <button>◷ &nbsp; Status</button>
+      <button>⌁ &nbsp; Activity</button>
+      <button>⚙ &nbsp; Settings</button>
+      <button onclick="logout()">↪ &nbsp; Logout</button>
+    </div>
+    <div class="connection">Connection<b id="sidebarConnection">Waiting for login</b></div>
+  </aside>
+
+  <main class="main">
+    <header class="top">
+      <div>
+        <h1>Dashboard</h1>
+        <p>Monitor and control your ESP32 device in real time.</p>
+      </div>
+      <div id="deviceBadge" class="status offline"><span class="dot"></span><span>ESP32 Offline</span></div>
+    </header>
+
+    <section class="cards">
+      <div class="card">
+        <h3>CONNECTION STATUS</h3>
+        <div id="brokerMetric" class="metric">Disconnected</div>
+        <small id="brokerDetail" class="muted">Waiting for EMQX</small>
+      </div>
+      <div class="card">
+        <h3>LED STATUS</h3>
+        <div id="ledMetric" class="metric">OFF</div>
+        <small id="ledDetail" class="muted">LED is currently off</small>
+      </div>
+      <div class="card">
+        <h3>DEVICE STATUS</h3>
+        <div id="deviceMetric" class="metric">OFFLINE</div>
+        <small class="muted">Live MQTT state</small>
+      </div>
+    </section>
+
+    <section class="content">
+      <div class="card led-panel">
+        <h3>LED CONTROL</h3>
+        <div id="ledOrb" class="led-orb"><div class="bulb" role="button" tabindex="0" aria-label="Toggle LED" onclick="toggleLED()" onkeydown="if(event.key==='Enter'||event.key===' ')toggleLED()">💡</div></div>
+        <div id="ledLargeText" style="font-weight:800;margin-bottom:15px">LED IS OFF</div>
+        <div class="control-row">
+          <button id="offBtn" class="btn off" onclick="setLED('OFF')" disabled>TURN OFF</button>
+          <button id="onBtn" class="btn" onclick="setLED('ON')" disabled>TURN ON</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>RECENT ACTIVITY</h3>
+        <div id="activity" class="activity"></div>
+      </div>
+    </section>
+
+    <div class="footer">© AS • ESP32 IoT Control System</div>
+  </main>
+</div>
+
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script>
+/* =====================================================
+   EMQX SETTINGS — hidden from the user interface
+   ===================================================== */
+const MQTT_HOST = "yf02b278.ala.eu-central-1.emqxsl.com";
+const MQTT_PORT = 8084;
+
+const TOPICS = {
+  command: "home/esp32/led/set",
+  state: "home/esp32/led/state",
+  status: "home/esp32/status"
+};
+
+let client = null;
+let mqttUser = "";
+let mqttPass = "";
+
+/* Splash → Login */
+setTimeout(() => {
+  document.getElementById("splash").classList.add("hidden");
+  document.getElementById("login").classList.remove("hidden");
+}, 2300);
+
+/* Login */
+function login(e){
+  e.preventDefault();
+  mqttUser = document.getElementById("username").value.trim();
+  mqttPass = document.getElementById("password").value;
+
+  document.getElementById("loginError").textContent = "";
+
+  document.getElementById("login").classList.add("hidden");
+  document.getElementById("loader").classList.remove("hidden");
+
+  setTimeout(() => {
+    document.getElementById("loader").classList.add("hidden");
+    document.getElementById("dashboard").style.display = "block";
+    connectMQTT();
+  }, 1700);
+}
+
+function connectMQTT(){
+  const clientId = "AS_Dashboard_" + Math.random().toString(16).slice(2);
+  const url = `wss://${MQTT_HOST}:${MQTT_PORT}/mqtt`;
+
+  client = mqtt.connect(url,{
+    clientId,
+    username:mqttUser,
+    password:mqttPass,
+    clean:true,
+    connectTimeout:10000,
+    reconnectPeriod:3000,
+    keepalive:30
+  });
+
+  client.on("connect",()=>{
+    setBroker(true);
+    addActivity("Connected to EMQX", "green");
+
+    client.subscribe([TOPICS.state,TOPICS.status],{qos:0},err=>{
+      if(err){
+        addActivity("Subscription failed","red");
+      }else{
+        addActivity("Subscribed to device status","green");
+      }
+    });
+  });
+
+  client.on("message",(topic,payload)=>{
+    const value=payload.toString();
+
+    if(topic===TOPICS.state) updateLED(value);
+
+    if(topic===TOPICS.status){
+      const online=value.trim().toLowerCase()==="online";
+      setDevice(online);
+      addActivity(online ? "ESP32 connected" : "ESP32 offline",online?"green":"red");
+    }
+  });
+
+  client.on("reconnect",()=>{
+    setBroker(false,"Reconnecting");
+    addActivity("Reconnecting to EMQX","gold");
+  });
+
+  client.on("close",()=>{
+    setBroker(false);
+    setDevice(false);
+  });
+
+  client.on("error",()=>{
+    addActivity("MQTT connection error","red");
+  });
+}
+
+function setBroker(online,text){
+  const metric=document.getElementById("brokerMetric");
+  const detail=document.getElementById("brokerDetail");
+  const side=document.getElementById("sidebarConnection");
+
+  metric.textContent=online ? "Online" : (text||"Disconnected");
+  metric.style.color=online ? "var(--green)" : "var(--red)";
+  detail.textContent=online ? "Connected and active" : "Waiting for EMQX";
+  side.textContent=online ? "EMQX Cloud • Connected" : "EMQX Cloud • Disconnected";
+}
+
+function setDevice(online){
+  const badge=document.getElementById("deviceBadge");
+  badge.className="status "+(online?"online":"offline");
+  badge.querySelector("span:last-child").textContent=online?"ESP32 Online":"ESP32 Offline";
+
+  document.getElementById("deviceMetric").textContent=online?"ONLINE":"OFFLINE";
+  document.getElementById("deviceMetric").style.color=online?"var(--green)":"var(--red)";
+
+  document.getElementById("onBtn").disabled=!online || !client || !client.connected;
+  document.getElementById("offBtn").disabled=!online || !client || !client.connected;
+}
+
+function updateLED(value){
+  const on=String(value).trim().toUpperCase()==="ON";
+  const orb=document.getElementById("ledOrb");
+
+  orb.className="led-orb"+(on?" on":"");
+  document.getElementById("ledMetric").textContent=on?"ON":"OFF";
+  document.getElementById("ledMetric").style.color=on?"var(--gold2)":"var(--muted)";
+  document.getElementById("ledDetail").textContent=on?"LED is currently on":"LED is currently off";
+  document.getElementById("ledLargeText").textContent=on?"LED IS ON":"LED IS OFF";
+
+  addActivity("LED turned "+(on?"ON":"OFF"),on?"gold":"green");
+}
+
+function setLED(value){
+  if(!client || !client.connected){
+    addActivity("Dashboard is not connected","red");
+    return;
+  }
+
+  client.publish(TOPICS.command,value,{qos:0,retain:false},err=>{
+    if(err) addActivity("Command failed","red");
+    else addActivity("LED command sent: "+value,"gold");
+  });
+}
+
+function toggleLED(){
+  const isOn=document.getElementById("ledOrb").classList.contains("on");
+  setLED(isOn?"OFF":"ON");
+}
+
+function addActivity(text,type){
+  const box=document.getElementById("activity");
+  const item=document.createElement("div");
+  item.className="event";
+
+  const color=type==="red"?"var(--red)":type==="gold"?"var(--gold)":"var(--green)";
+  item.innerHTML=`<i style="background:${color}"></i><span>${text}</span><time>${new Date().toLocaleTimeString()}</time>`;
+
+  box.prepend(item);
+
+  while(box.children.length>12) box.removeChild(box.lastChild);
+}
+
+function logout(){
+  if(client){
+    client.end(true);
+    client=null;
+  }
+
+  document.getElementById("dashboard").style.display="none";
+  document.getElementById("login").classList.remove("hidden");
+  document.getElementById("username").value="";
+  document.getElementById("password").value="";
+  mqttUser="";
+  mqttPass="";
+}
+</script>
+</body>
+</html>
